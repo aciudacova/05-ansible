@@ -1,0 +1,54 @@
+---
+- name: Validate webserver pages from load balancer
+  hosts: 127.0.0.1
+  gather_facts: false
+  become: false
+
+  vars:
+    env_messages:
+      dev: "Welcome to the Development Environment"
+      stg: "Welcome to the Staging Environment!"
+      prod: "Welcome to the Production Website!"
+
+  tasks:
+    - name: Set expected welcome message
+      set_fact:
+        expected_message: "{{ env_messages[ENV] | default('UNKNOWN') }}"
+
+    - name: Collect public IPs of webservers in environment
+      set_fact:
+        webservers_ips: "{{ groups['webservers_' + ENV] | map('extract', hostvars, 'ansible_host') }}"
+
+    - name: Show webservers public IPs
+      debug:
+        var: webservers_ips
+
+    - name: Curl each webserver private IP from load balancer
+      command: "curl -s http://{{ item }}"
+      register: curl_result
+      loop: "{{ webservers_ips }}"
+
+    - name: Get response lines from each webserver
+      debug:
+        msg: |
+          Response from {{ item.item }}:
+          {{ item.stdout_lines | join('\n') }}
+      loop: "{{ curl_result.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Assert each backend returned expected welcome message
+      assert:
+        that:
+          - expected_message in item.stdout
+        success_msg: "{{ item.stdout_lines }} returned expected message."
+        fail_msg: "{{ item.stdout_lines }} did not return: {{ expected_message }}"
+      loop: "{{ curl_result.results }}"
+      no_log: true
+
+    - name: Show only welcome message from each server
+      debug:
+        msg: "{{ item.item }} responded with:\n{{ item.stdout_lines | join('\n') }}"
+      loop: "{{ curl_result.results }}"
+      loop_control:
+        label: "{{ item.item }}"

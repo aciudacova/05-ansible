@@ -1,0 +1,57 @@
+---
+# - name: DEBUG - Ensure ufw is installed
+#   ansible.builtin.apt:
+#     name: ufw
+#     state: present
+#   become: true
+
+# - name: DEBUG - Stop ufw firewall to isolate issue
+#   ansible.builtin.service:
+#     name: ufw
+#     state: stopped
+#   become: true
+
+- name: Update apt package cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600 # update if cache is older than 1 hour
+  become: true
+
+- name: Install Nginx
+  ansible.builtin.package:
+    name: nginx
+    state: present
+  become: true
+
+- name: Remove the default Nginx site # so there are no conflicts between the initial config and mine
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  become: true
+  notify: Restart Nginx # notify handler to ensure Nginx restarts after removal
+
+- name: Deploy custom index page from template
+  ansible.builtin.template:
+    src: index.html.j2
+    dest: /var/www/html/index.html
+  become: true
+
+- name: Deploy Nginx virtual host configuration from template
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/conf.d/default.conf
+  become: true
+  notify: Restart Nginx
+
+- name: Ensure Nginx is started and enabled
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: true
+  become: true
+
+- name: Install Nmap
+  ansible.builtin.package:
+    name: nmap
+    state: present
+  become: true

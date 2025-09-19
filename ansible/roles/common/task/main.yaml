@@ -1,0 +1,35 @@
+---
+- name: Install crypto and firewall tools
+  ansible.builtin.package:
+    name:
+      - openssl
+      - ufw
+    state: present
+  become: true
+
+- name: Ensure firewalld is running
+  ansible.builtin.service:
+    name: firewalld
+    state: started
+    enabled: true
+  become: true
+
+- name: Allow HTTP and HTTPS traffic
+  ansible.posix.firewalld:
+    port: "{{ item }}/tcp"
+    permanent: true
+    state: enabled
+    immediate: true # reload firewall immediately
+  loop:
+    - "{{ http_port }}"
+    - "{{ https_port }}"
+  become: true
+
+- name: Allow traffic from within the VPC
+  ansible.posix.firewalld:
+    source: '{{ aws_vpc_cidr_block }}'
+    zone: public
+    permanent: true
+    state: enabled
+    immediate: true
+  become: true

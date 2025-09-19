@@ -1,0 +1,22 @@
+# tells Ansible to run the nginx_web role on the webservers and the haproxy_lb role on the loadbalancers
+# depending on the environment
+---
+
+- name: Fail if ENV variable is not provided
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Ensure ENV is defined
+      ansible.builtin.fail:
+        msg: "You must pass the ENV variable (e.g. -e 'ENV=stg')"
+      when: ENV is not defined
+
+- name: Configure web servers
+  hosts: "webservers_{{ ENV | default('undefined') }}"
+  roles:
+    - nginx_web
+
+- name: Configure load balancer
+  hosts: "loadbalancers_{{ ENV | default('undefined') }}"
+  roles:
+    - haproxy_lb

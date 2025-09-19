@@ -1,0 +1,61 @@
+---
+
+- name: Update apt package cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600 # update if cache > 1 hour
+  become: true
+
+- name: Install HAProxy
+  ansible.builtin.package:
+    name: haproxy
+    state: present
+  become: true
+
+- name: Check if haproxy.pem exists
+  ansible.builtin.stat:
+    path: /etc/ssl/private/haproxy.pem
+  register: pem_file_stat
+
+- name: Copy SSL certificate and key for HAProxy
+  ansible.builtin.copy:
+    src: haproxy.pem # looks for this file in the files/
+    dest: /etc/ssl/private/haproxy.pem
+    owner: root
+    group: root
+    mode: '0640'
+  become: true
+  when: not pem_file_stat.stat.exists 
+  notify: Reload HAProxy
+
+- name: Deploy HAProxy configuration to TMP location
+  ansible.builtin.template:
+    src: haproxy.cfg.j2
+    dest: /tmp/haproxy.cfg
+  become: true
+
+- name: Verify HAProxy configuration syntax
+  command: haproxy -c -f /tmp/haproxy.cfg
+  register: haproxy_config_check
+  failed_when: haproxy_config_check.rc != 0
+  changed_when: false
+
+- name: Deploy HAProxy configuration
+  ansible.builtin.template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+  become: true
+  notify: Reload HAProxy
+
+- name: Ensure HAProxy is started and enabled
+  ansible.builtin.service:
+    name: haproxy
+    state: started
+    enabled: true
+  become: true
+
+- name: Install Nmap
+  ansible.builtin.package:
+    name: nmap
+    state: present
+  become: true

@@ -1,0 +1,32 @@
+---
+- name: Validate Security with Nmap
+  hosts: 127.0.0.1
+  gather_facts: false
+  become: true
+
+  tasks:
+    - name: Ensure ENV is defined
+      ansible.builtin.fail:
+        msg: "You must pass the ENV variable (e.g. -e 'ENV=staging')"
+      when: ENV is not defined
+
+    - name: Collect IPs of webservers in environment
+      set_fact:
+        webservers_ips: "{{ groups['webservers_' + ENV] | map('extract', hostvars, 'ansible_host') }}"
+
+    - name: Show webservers IPs
+      debug:
+        var: webservers_ips
+
+    - name: Scan open ports with Nmap on public IP
+      command: "nmap -Pn -T4 --top-ports 20 --open {{ item }}"
+      register: nmap_scan
+      loop: "{{ webservers_ips }}"
+      become: false
+
+    - name: Print open ports per host
+      debug:
+        msg: "{{ item.stdout_lines }}"
+      loop: "{{ nmap_scan.results }}"
+      loop_control:
+        label: "{{ item.item }}"

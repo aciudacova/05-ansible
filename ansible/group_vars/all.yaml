@@ -1,0 +1,11 @@
+http_port: 80
+https_port: 443
+
+ansible_user: admin
+# become_user: admin
+ansible_ssh_private_key_file: ../terraform/key.pem
+# ansible_become: yes
+ansible_connection: ssh
+ansible_become_method: sudo
+ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+aws_vpc_cidr_block: "10.0.0.0/16"

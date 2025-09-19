@@ -1,0 +1,7 @@
+# handlers run when "notified" by another task; use this to restart Nginx only if its configuration changes
+---
+- name: Restart Nginx
+  ansible.builtin.service:
+    name: nginx
+    state: restarted
+  become: true

@@ -1,0 +1,7 @@
+# will reload HAProxy if its configuration file was changed
+---
+- name: Reload HAProxy
+  ansible.builtin.service:
+    name: haproxy
+    state: reloaded
+  become: true

@@ -1,0 +1,45 @@
+---
+- name: Validate HAProxy load balancing
+  hosts: 127.0.0.1
+  gather_facts: false
+  become: false
+
+  vars:
+    requests_count: 10
+    haproxy_target_ip: "{{ groups['loadbalancers_' + ENV] | map('extract', hostvars, 'ansible_host') }}"
+
+  tasks:
+    - name: Initialize dict to store counts per backend
+      set_fact:
+        backend_counts: {}
+
+    - name: Perform {{ requests_count }} requests through HAProxy
+      shell: |
+        curl -s http://{{ haproxy_target_ip[0] }} | grep -i 'Served by: ' | awk -F'[:<]' '{print $3}' | tr -d ' '
+      register: curl_results
+      retries: 1
+      delay: 0
+      until: curl_results is succeeded
+      loop: "{{ range(0, requests_count | int) | list }}"
+      loop_control:
+        label: "Request {{ item + 1 }}"
+
+    - name: Count how many times each backend served requests
+      set_fact:
+        backend_counts: >-
+          {{
+            backend_counts | combine(
+              { item.stdout: (backend_counts.get(item.stdout, 0) + 1) }
+            )
+          }}
+      loop: "{{ curl_results.results }}"
+      no_log: true
+
+    - name: Show load balancer of backend request counts
+      vars:
+        msg: |
+          Load balancer {{ inventory_hostname }} backend request counts:
+          {% for host, count in backend_counts.items() %} 
+          separator {{ host }} : {{ count }} {% endfor %}
+      debug:
+        msg: "{{ msg.split('separator') }}"
