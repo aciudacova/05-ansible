@@ -35,7 +35,6 @@ frontend https_front
 backend http_back
    balance roundrobin
    # loop automatically adds all hosts from the [webservers] group
-   # add variable that defines the environment - dev/stg/prod
    {% for host in groups['webservers_' + inventory_hostname.split('-')[0]] %}
    server {{ hostvars[host].inventory_hostname }} {{ hostvars[host].private_ip }}:{{ http_port }} check
    {% endfor %}

@@ -1,6 +1,6 @@
 ---
 - name: Validate Security with Nmap
-  hosts: 127.0.0.1
+  hosts: "loadbalancers_{{ ENV }}"
   gather_facts: false
   become: true
 
@@ -12,13 +12,18 @@
 
     - name: Collect IPs of webservers in environment
       set_fact:
-        webservers_ips: "{{ groups['webservers_' + ENV] | map('extract', hostvars, 'ansible_host') }}"
+        webservers_ips: "{{ groups['webservers_' + ENV] | map('extract', hostvars, 'private_ip') }}"
 
+    - name: Display the public and private IPs of loadbalancer
+      ansible.builtin.debug:
+        msg: >-
+          Running nmap from {{ ansible_host }} (public), 
+          the configured private IP is {{ private_ip }}.
     - name: Show webservers IPs
       debug:
         var: webservers_ips
 
-    - name: Scan open ports with Nmap on public IP
+    - name: Scan open ports with Nmap on private IP
       command: "nmap -Pn -T4 --top-ports 20 --open {{ item }}"
       register: nmap_scan
       loop: "{{ webservers_ips }}"

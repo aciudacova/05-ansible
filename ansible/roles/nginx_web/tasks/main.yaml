@@ -1,16 +1,4 @@
 ---
-# - name: DEBUG - Ensure ufw is installed
-#   ansible.builtin.apt:
-#     name: ufw
-#     state: present
-#   become: true
-
-# - name: DEBUG - Stop ufw firewall to isolate issue
-#   ansible.builtin.service:
-#     name: ufw
-#     state: stopped
-#   become: true
-
 - name: Update apt package cache
   ansible.builtin.apt:
     update_cache: true
@@ -48,10 +36,4 @@
     name: nginx
     state: started
     enabled: true
-  become: true
-
-- name: Install Nmap
-  ansible.builtin.package:
-    name: nmap
-    state: present
   become: true
